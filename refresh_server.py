@@ -2,7 +2,7 @@
 """
 LOCAD Dashboard Refresh Server
 Listens on http://localhost:8765
-  GET /refresh  → re-queries Metabase T69, regenerates HTML, deploys to Netlify
+  GET /refresh  → re-queries Metabase T69, regenerates HTML, pushes to GitHub Pages
   GET /status   → shows last refresh time
 
 Usage: python3 refresh_server.py   (or double-click refresh_server.command)
@@ -30,6 +30,8 @@ CONFIG_PATH  = Path.home() / ".locad_dashboard.json"
 SCRIPT_DIR   = Path(__file__).parent
 GENERATE_PY  = SCRIPT_DIR / "generate_dashboard.py"
 DEPLOY_PY    = SCRIPT_DIR / "netlify_deploy.py"
+# GitHub Pages repo — HTML is published as index.html here
+GITHUB_REPO  = Path.home() / "Desktop" / "locad-finops-dashboard"
 
 last_refresh = "Never"
 last_hc      = None
@@ -95,14 +97,32 @@ def regenerate():
     print("  HTML regenerated")
 
 def deploy():
-    result = subprocess.run(
-        [sys.executable, str(DEPLOY_PY)],
-        capture_output=True, text=True
-    )
-    print(result.stdout.strip())
-    if result.returncode != 0:
-        raise RuntimeError(f"netlify_deploy.py failed:\n{result.stderr}")
-    print("  Deployed to Netlify")
+    """Copy regenerated HTML to GitHub Pages repo and push."""
+    import shutil
+    # Find the generated HTML (outputs next to generate_dashboard.py)
+    src_html = SCRIPT_DIR / "locad-dashboard-latest.html"
+    dst_html = GITHUB_REPO / "index.html"
+
+    if not src_html.exists():
+        raise RuntimeError(f"Generated HTML not found at {src_html}")
+    if not GITHUB_REPO.exists():
+        raise RuntimeError(f"GitHub repo folder not found at {GITHUB_REPO}")
+
+    shutil.copy2(src_html, dst_html)
+    print(f"  Copied HTML → {dst_html}")
+
+    # Git commit and push
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+    cmds = [
+        ["git", "-C", str(GITHUB_REPO), "add", "index.html"],
+        ["git", "-C", str(GITHUB_REPO), "commit", "-m", f"Refresh: headcount update {ts}"],
+        ["git", "-C", str(GITHUB_REPO), "push"],
+    ]
+    for cmd in cmds:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0 and "nothing to commit" not in r.stdout + r.stderr:
+            raise RuntimeError(f"Git command failed: {' '.join(cmd)}\n{r.stderr}")
+    print("  Pushed to GitHub Pages")
 
 # ── Load / prompt for credentials ────────────────────────────────────────────
 def ensure_credentials() -> dict:
@@ -186,7 +206,7 @@ if __name__ == "__main__":
     # Quick credential check on startup (optional — won't block if skipped)
     print(f"\nLOCAD Dashboard Refresh Server")
     print(f"Listening on http://localhost:{PORT}")
-    print(f"  /refresh  → fetch latest HC, regenerate, deploy")
+    print(f"  /refresh  → fetch latest HC, regenerate, push to GitHub Pages")
     print(f"  /status   → last refresh info")
     print(f"\nKeep this window open. Click ↻ Refresh in the dashboard.\n")
 
