@@ -21,65 +21,31 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Update today's headcount from Metabase
+      - name: Update today's headcount from secret
         env:
-          MB_USER: ${{ secrets.MB_USER }}
-          MB_PASS: ${{ secrets.MB_PASS }}
+          HC_TODAY: ${{ secrets.HC_TODAY }}
         run: |
           python3 - <<'EOF'
-          import json, os, re, urllib.request
-          from datetime import date, datetime
+          import os, re
+          from datetime import date
 
-          MB_URL     = "https://metabase.golocad.com"
-          MB_DB      = 2
-          T69        = 69
-          F_DATE     = 1710
-          F_EMP_BY   = 1712
-          F_WAREHOUSE= 1708
-          WAREHOUSE  = "LOCAD Cabuyao (LISP) FC"
-          EMPLOYERS  = ["GREEN ARROW", "REVMAN", "TOPLIS Solutions"]
-          TODAY      = date.today().isoformat()
+          TODAY = date.today().isoformat()
+          hc_str = os.environ.get("HC_TODAY", "").strip()
 
-          mb_user = os.environ.get("MB_USER", "")
-          mb_pass = os.environ.get("MB_PASS", "")
-          if not mb_user or not mb_pass:
-              print("No Metabase credentials — skipping headcount update")
+          if not hc_str or not hc_str.isdigit():
+              print(f"HC_TODAY secret not set or invalid — skipping headcount update")
               raise SystemExit(0)
 
-          # Auth
-          data = json.dumps({"username": mb_user, "password": mb_pass}).encode()
-          req  = urllib.request.Request(f"{MB_URL}/api/session", data=data,
-                     headers={"Content-Type":"application/json"}, method="POST")
-          with urllib.request.urlopen(req, timeout=30) as r:
-              token = json.loads(r.read())["id"]
-          print(f"Authenticated as {mb_user}")
+          hc = int(hc_str)
+          print(f"Headcount for {TODAY}: {hc} (from secret)")
 
-          # Query
-          payload = {"database": MB_DB, "type": "query", "query": {
-              "source-table": T69,
-              "filter": ["and",
-                  ["=",  ["field", F_WAREHOUSE, {"base-type":"type/Text"}], WAREHOUSE],
-                  ["in", ["field", F_EMP_BY,    {"base-type":"type/Text"}]] + EMPLOYERS,
-                  ["between",
-                      ["field", F_DATE, {"base-type":"type/DateTimeWithLocalTZ"}],
-                      f"{TODAY}T00:00:00", f"{TODAY}T23:59:59"]]}}
-          data = json.dumps({"query": payload}).encode()
-          req  = urllib.request.Request(f"{MB_URL}/api/dataset", data=data,
-                     headers={"Content-Type":"application/json","X-Metabase-Session":token},
-                     method="POST")
-          with urllib.request.urlopen(req, timeout=45) as r:
-              rows = json.loads(r.read()).get("data",{}).get("rows",[])
-          hc = len(rows)
-          print(f"Headcount for {TODAY}: {hc}")
-
-          # Patch generate_dashboard.py
-          src  = open("generate_dashboard.py").read()
-          new  = re.sub(rf"('{re.escape(TODAY)}':\s*)\d+", rf"\g<1>{hc}", src)
+          src = open("generate_dashboard.py").read()
+          new = re.sub(rf"('{re.escape(TODAY)}':\s*)\d+", rf"\g<1>{hc}", src)
           if new != src:
               open("generate_dashboard.py","w").write(new)
               print(f"Patched headcount for {TODAY} → {hc}")
           else:
-              print(f"No match for {TODAY} in script — headcount not patched")
+              print(f"No entry found for {TODAY} in script — add the date first")
           EOF
 
       - name: Regenerate dashboard HTML
