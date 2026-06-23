@@ -204,16 +204,30 @@ avg7_pkg   = round(avg7_cost - avg7_hc * DAILY_RATE)
 
 cost_std   = stddev(last7_cost)
 
-# Forecast days 17-30 using regression extrapolation + 7d average blend
-# Regression forecast per day
-fc_cost_reg = [round(cost_int + cost_slope * (DAYS_WITH_DATA + i)) for i in range(1, DAYS_REMAINING + 1)]
-fc_rev_reg  = [round(rev_int  + rev_slope  * (DAYS_WITH_DATA + i)) for i in range(1, DAYS_REMAINING + 1)]
-# 7-day average forecast (flat)
-fc_cost_avg = [avg7_cost] * DAYS_REMAINING
-fc_rev_avg  = [avg7_rev]  * DAYS_REMAINING
-# Blended (60% regression, 40% 7d avg)
-fc_cost = [round(0.6 * r + 0.4 * a) for r, a in zip(fc_cost_reg, fc_cost_avg)]
-fc_rev  = [round(0.6 * r + 0.4 * a) for r, a in zip(fc_rev_reg,  fc_rev_avg)]
+# Volume forecast from Metabase (card 1673) — Cabuyao Jun 24-30
+from datetime import date, timedelta
+vol_forecast_mb = {
+    '2026-06-24': 9063,
+    '2026-06-25': 8864,
+    '2026-06-26': 9125,
+    '2026-06-27': 9038,
+    '2026-06-28': 9042,
+    '2026-06-29': 10455,
+    '2026-06-30': 17330,
+}
+
+# Per-order rates from last 7 days
+avg_pkg_per_order = (avg7_pkg / avg7_vol) if avg7_vol else 0
+avg_rev_per_order = (avg7_rev / avg7_vol) if avg7_vol else 0
+
+# Forecast volume: use Metabase forecast where available, else 7d avg
+fc_dates_tmp = [(date(2026, 6, 1) + timedelta(days=DAYS_WITH_DATA + i)).isoformat() for i in range(DAYS_REMAINING)]
+fc_vol = [vol_forecast_mb.get(d, avg7_vol) for d in fc_dates_tmp]
+
+# Volume-driven forecast: labor = avg HC × rate, packaging scales with volume
+fc_pkg  = [round(avg_pkg_per_order * v) for v in fc_vol]
+fc_cost = [round(avg7_hc * DAILY_RATE + avg_pkg_per_order * v) for v in fc_vol]
+fc_rev  = [round(avg_rev_per_order * v) for v in fc_vol]
 # Upper/lower band (±1 stdev of last 7 days)
 fc_cost_hi = [c + round(cost_std) for c in fc_cost]
 fc_cost_lo = [max(0, c - round(cost_std)) for c in fc_cost]
@@ -245,7 +259,6 @@ rev_trend_dir  = '📈 Rising' if rev_slope  > 1000 else ('📉 Falling' if rev_
 budget_flag    = flag(proj_cost_total, MONTHLY_BUDGET, MONTHLY_BUDGET * 1.1)
 
 # Forecast date labels — dynamic start (day after last complete data day)
-from datetime import date, timedelta
 fc_dates = [date(2026, 6, 1) + timedelta(days=DAYS_WITH_DATA + i) for i in range(DAYS_REMAINING)]
 fc_labels = [d.strftime('%-d %b') for d in fc_dates]
 
@@ -256,25 +269,25 @@ actual_rev_js  = [r['rev']   for r in complete]
 
 # Forecast row HTML
 def fc_row_html(i):
-    d    = fc_dates[i]
-    fc_c = fc_cost[i]; fc_r = fc_rev[i]
-    fc_m = fc_r - fc_c
-    mc   = '#16a34a' if fc_m >= 0 else '#dc2626'
-    vs   = fc_c - DAILY_BUDGET
-    vc   = '#dc2626' if vs > 0 else '#16a34a'
-    vs_s = ('+' if vs > 0 else '') + php(vs)
+    d     = fc_dates[i]
+    fc_c  = fc_cost[i]; fc_r = fc_rev[i]; fc_v = fc_vol[i]; fc_p = fc_pkg[i]
+    fc_m  = fc_r - fc_c
+    mc    = '#16a34a' if fc_m >= 0 else '#dc2626'
+    vs    = fc_c - DAILY_BUDGET
+    vc    = '#dc2626' if vs > 0 else '#16a34a'
+    vs_s  = ('+' if vs > 0 else '') + php(vs)
     weekday = d.strftime('%a')
     return f'''<tr style="background:#f8f7ff;color:#475569;font-style:italic">
       <td>{weekday}, {fc_labels[i]} <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
       <td style="text-align:right">{avg7_hc}</td>
-      <td style="text-align:right">{avg7_vol:,}</td>
+      <td style="text-align:right">{fc_v:,}</td>
       <td style="text-align:right">{php(avg7_hc*DAILY_RATE)}</td>
-      <td style="text-align:right">{php(avg7_pkg)}</td>
+      <td style="text-align:right">{php(fc_p)}</td>
       <td style="text-align:right;font-weight:600">{php(fc_c)}</td>
       <td style="text-align:right;color:{vc};font-size:12px">{vs_s}</td>
       <td style="text-align:right">{php(fc_r)}</td>
       <td style="text-align:right;color:{mc}">{php(fc_m)}</td>
-      <td style="text-align:right;color:#94a3b8">{php(round(fc_c/avg7_vol,2)) if avg7_vol else "—"}</td>
+      <td style="text-align:right;color:#94a3b8">{php(round(fc_c/fc_v,2)) if fc_v else "—"}</td>
     </tr>'''
 
 def row_html(r):
@@ -592,9 +605,9 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
         <tr>
           <td>FORECAST TOTAL (14d)</td>
           <td style="text-align:right">{avg7_hc} avg</td>
-          <td style="text-align:right">{avg7_vol*DAYS_REMAINING:,}</td>
+          <td style="text-align:right">{sum(fc_vol):,}</td>
           <td style="text-align:right">{php(avg7_hc*DAILY_RATE*DAYS_REMAINING)}</td>
-          <td style="text-align:right">{php(avg7_pkg*DAYS_REMAINING)}</td>
+          <td style="text-align:right">{php(sum(fc_pkg))}</td>
           <td style="text-align:right">{php(sum(fc_cost))}</td>
           <td style="text-align:right;color:{'#fca5a5' if sum(fc_cost)>DAILY_BUDGET*DAYS_REMAINING else '#86efac'}">{('+' if sum(fc_cost)>DAILY_BUDGET*DAYS_REMAINING else '')}{php(sum(fc_cost)-DAILY_BUDGET*DAYS_REMAINING)}</td>
           <td style="text-align:right">{php(sum(fc_rev))}</td>
@@ -604,7 +617,7 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
         <tr style="background:#1e293b;color:#fff;font-weight:700">
           <td>JUNE TOTAL (30d)</td>
           <td style="text-align:right">—</td>
-          <td style="text-align:right">{mtd_vol + avg7_vol*DAYS_REMAINING:,}</td>
+          <td style="text-align:right">{mtd_vol + sum(fc_vol):,}</td>
           <td style="text-align:right">—</td>
           <td style="text-align:right">—</td>
           <td style="text-align:right">{php(proj_cost_total)}</td>
