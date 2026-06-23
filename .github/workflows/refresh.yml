@@ -21,33 +21,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Update today's headcount from secret
-        env:
-          HC_TODAY: ${{ secrets.HC_TODAY }}
-        run: |
-          python3 - <<'EOF'
-          import os, re
-          from datetime import date
-
-          TODAY = date.today().isoformat()
-          hc_str = os.environ.get("HC_TODAY", "").strip()
-
-          if not hc_str or not hc_str.isdigit():
-              print(f"HC_TODAY secret not set or invalid — skipping headcount update")
-              raise SystemExit(0)
-
-          hc = int(hc_str)
-          print(f"Headcount for {TODAY}: {hc} (from secret)")
-
-          src = open("generate_dashboard.py").read()
-          new = re.sub(rf"('{re.escape(TODAY)}':\s*)\d+", rf"\g<1>{hc}", src)
-          if new != src:
-              open("generate_dashboard.py","w").write(new)
-              print(f"Patched headcount for {TODAY} → {hc}")
-          else:
-              print(f"No entry found for {TODAY} in script — add the date first")
-          EOF
-
       - name: Regenerate dashboard HTML
         run: |
           python3 generate_dashboard.py
@@ -58,7 +31,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html generate_dashboard.py
+          git add index.html
           if git diff --cached --quiet; then
             echo "No changes — skipping commit"
           else
