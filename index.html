@@ -40,7 +40,7 @@ tfoot td{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}
     <div class="sub">30 days MTD</div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
-    <div class="ts" id="tsLabel">Updated Jun 23, 2026 12:52</div>
+    <div class="ts" id="tsLabel">Updated Jun 24, 2026 06:22</div>
     <button onclick="location.reload(true)" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">🔄 Refresh</button>
   </div>
 </div>
@@ -1067,6 +1067,17 @@ new Chart(document.getElementById('revChart'),{
   }
 });
 
+// Update timestamp to current browser time on load
+(function() {
+  const el = document.getElementById('tsLabel');
+  if (el) {
+    const now = new Date();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const formatted = months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() + ' ' +
+      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    el.textContent = 'Updated ' + formatted;
+  }
+})();
 </script>
 </body>
 </html>

@@ -796,6 +796,17 @@ new Chart(document.getElementById('revChart'),{{
   }}
 }});
 
+// Update timestamp to current browser time on load
+(function() {{
+  const el = document.getElementById('tsLabel');
+  if (el) {{
+    const now = new Date();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const formatted = months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() + ' ' +
+      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    el.textContent = 'Updated ' + formatted;
+  }}
+}})();
 </script>
 </body>
 </html>"""
