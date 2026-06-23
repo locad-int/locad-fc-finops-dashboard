@@ -22,6 +22,8 @@ jobs:
           python-version: '3.11'
 
       - name: Regenerate dashboard HTML
+        env:
+          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
         run: |
           python3 generate_dashboard.py
           cp locad-dashboard-latest.html index.html

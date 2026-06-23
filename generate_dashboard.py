@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Generate LOCAD Cabuyao June 2026 P&L Dashboard HTML — Financial view."""
 from datetime import datetime
+import os as _os
+
+# Token injected by GitHub Actions (DISPATCH_TOKEN secret) — allows team to trigger refresh
+DISPATCH_TOKEN = _os.environ.get('DISPATCH_TOKEN', '')
 
 t43 = {
     '2026-06-01': 10523, '2026-06-02': 10171, '2026-06-03': 10173,
@@ -406,6 +410,7 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
   </div>
   <div style="display:flex;align-items:center;gap:16px">
     <div class="ts" id="tsLabel">Updated {gen}</div>
+    {'<button id="refreshBtn" onclick="requestRefresh()" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><span id="refreshIcon">🔄</span><span id="refreshTxt">Refresh</span></button>' if DISPATCH_TOKEN else ''}
   </div>
 </div>
 
@@ -783,6 +788,44 @@ new Chart(document.getElementById('revChart'),{{
     plugins:{{legend:{{position:'top',labels:{{font:{{size:11}},boxWidth:10}}}}}}
   }}
 }});
+
+// ── Request Refresh ─────────────────────────────────────────────────────────
+async function requestRefresh() {{
+  const btn  = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  const txt  = document.getElementById('refreshTxt');
+  if (!btn) return;
+  btn.disabled = true;
+  icon.textContent = '⏳';
+  txt.textContent  = 'Requesting…';
+  try {{
+    const res = await fetch(
+      'https://api.github.com/repos/locad-int/locad-fc-finops-dashboard/actions/workflows/refresh.yml/dispatches',
+      {{
+        method: 'POST',
+        headers: {{
+          'Authorization': 'Bearer {DISPATCH_TOKEN}',
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        }},
+        body: JSON.stringify({{ ref: 'main' }})
+      }}
+    );
+    if (res.status === 204) {{
+      icon.textContent = '✅';
+      txt.textContent  = 'Queued!';
+      setTimeout(() => {{ icon.textContent='🔄'; txt.textContent='Refresh'; btn.disabled=false; }}, 10000);
+    }} else {{
+      icon.textContent = '❌';
+      txt.textContent  = 'Failed (' + res.status + ')';
+      setTimeout(() => {{ icon.textContent='🔄'; txt.textContent='Refresh'; btn.disabled=false; }}, 4000);
+    }}
+  }} catch(e) {{
+    icon.textContent = '❌';
+    txt.textContent  = 'Error';
+    setTimeout(() => {{ icon.textContent='🔄'; txt.textContent='Refresh'; btn.disabled=false; }}, 4000);
+  }}
+}}
 </script>
 </body>
 </html>"""
