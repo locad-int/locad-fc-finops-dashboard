@@ -204,16 +204,40 @@ avg7_pkg   = round(avg7_cost - avg7_hc * DAILY_RATE)
 
 cost_std   = stddev(last7_cost)
 
-# Volume forecast from Metabase (card 1673) — Cabuyao Jun 24-30
+# Metabase raw forecast (card 1673) — Cabuyao full June
+# Historical dates used to compute rolling accuracy; future dates used as forecast base
 from datetime import date, timedelta
-vol_forecast_mb = {
-    '2026-06-24': 9063,
-    '2026-06-25': 8864,
-    '2026-06-26': 9125,
-    '2026-06-27': 9038,
-    '2026-06-28': 9042,
-    '2026-06-29': 10455,
+mb_forecast_raw = {
+    # Jun 1-22: historical Metabase forecast (for accuracy computation vs t43 actuals)
+    '2026-06-01': 16299, '2026-06-02': 10622, '2026-06-03':  9021,
+    '2026-06-04':  8724, '2026-06-05': 12676, '2026-06-06': 23977,
+    '2026-06-07': 10502, '2026-06-08':  9529, '2026-06-09': 10346,
+    '2026-06-10':  9627, '2026-06-11':  8883, '2026-06-12':  9393,
+    '2026-06-13':  9841, '2026-06-14': 11850, '2026-06-15': 15309,
+    '2026-06-16': 11094, '2026-06-17': 10031, '2026-06-18':  8918,
+    '2026-06-19':  9726, '2026-06-20':  9511, '2026-06-21':  8690,
+    '2026-06-22':  9493,
+    # Jun 24-30: future Metabase forecast (accuracy-corrected before use)
+    '2026-06-24':  9063, '2026-06-25':  8864, '2026-06-26':  9125,
+    '2026-06-27':  9038, '2026-06-28':  9042, '2026-06-29': 10455,
     '2026-06-30': 17330,
+}
+
+# Rolling accuracy correction: last-7-day avg of (actual t43 / Metabase forecast)
+# Automatically updates as new daily actuals are added to t43 above
+_accuracy_pairs = sorted([
+    (d, t43[d] / mb_forecast_raw[d])
+    for d in t43
+    if t43.get(d, 0) > 0 and mb_forecast_raw.get(d, 0) > 0
+])
+_last7 = _accuracy_pairs[-7:] if len(_accuracy_pairs) >= 7 else _accuracy_pairs
+MB_ACCURACY_FACTOR = round(sum(r for _, r in _last7) / len(_last7), 3) if _last7 else 1.0
+
+# Apply correction to all forecast dates (days not yet in t43 actuals)
+vol_forecast_mb = {
+    d: round(v * MB_ACCURACY_FACTOR)
+    for d, v in mb_forecast_raw.items()
+    if not t43.get(d, 0)
 }
 
 # Per-order rates from last 7 days
@@ -574,8 +598,8 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
       <h3>Full June — Actual vs Forecast Cost &amp; Revenue (₱)</h3>
       <canvas id="forecastChart" height="130"></canvas>
       <p style="font-size:11px;color:#94a3b8;margin-top:8px">
-        Forecast = 60% linear regression + 40% 7-day average. Shaded band = ±1 std dev of last 7 days.
-        Dashed = forecast period (Jun {int(today_str[8:])+1}–30).
+        Forecast = volume-driven model (Metabase card 1673 × {MB_ACCURACY_FACTOR:.3f} accuracy correction).
+        Shaded band = ±1 std dev of last 7 days. Dashed = forecast period (Jun {int(today_str[8:])+1}–30).
       </p>
     </div>
 
@@ -629,8 +653,9 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
       </tfoot>
     </table>
     <p style="margin-top:8px;font-size:11px;color:#94a3b8">
-      * Forecast uses blended model (60% regression + 40% 7-day avg) · HC based on last 7-day average ({avg7_hc}) ·
-      Recommended HC to stay within budget: <strong>{rec_hc}</strong> heads/day
+      * Forecast uses volume-driven model: Labor = avg HC × ₱1,167, Packaging scales per order from last 7-day avg ·
+      Volume = Metabase card 1673 × {MB_ACCURACY_FACTOR:.3f} accuracy factor (actual/forecast ratio, Jun 16–22) ·
+      HC based on last 7-day average ({avg7_hc}) · Recommended HC to stay within budget: <strong>{rec_hc}</strong> heads/day
     </p>
   </div>
 
