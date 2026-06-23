@@ -767,7 +767,7 @@ new Chart(document.getElementById('costChart'),{{
   }}
 }});
 
-const rev16=rev_.slice(0,16), tc16=tc_.slice(0,16), lbl16=lbl.slice(0,16);
+const rev16=rev_.slice(0,{DAYS_WITH_DATA}), tc16=tc_.slice(0,{DAYS_WITH_DATA}), lbl16=lbl.slice(0,{DAYS_WITH_DATA});
 new Chart(document.getElementById('revChart'),{{
   type:'bar',
   data:{{labels:lbl16,datasets:[
