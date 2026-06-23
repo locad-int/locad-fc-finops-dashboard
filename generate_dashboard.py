@@ -10,7 +10,7 @@ t43 = {
     '2026-06-13': 8623,  '2026-06-14': 9054,  '2026-06-15': 10755,
     '2026-06-16': 9778,  '2026-06-17': 7132,
     '2026-06-18': 7102,  '2026-06-19': 6628,  '2026-06-20': 6496,
-    '2026-06-21': 6224,  '2026-06-22': 6971,  '2026-06-23': 107,
+    '2026-06-21': 6224,  '2026-06-22': 6971,  '2026-06-23': 0,
 }
 
 headcounts = {
@@ -21,10 +21,10 @@ headcounts = {
     '2026-06-13': 137, '2026-06-14': 109, '2026-06-15': 120,
     '2026-06-16': 107, '2026-06-17': 116,
     '2026-06-18': 110, '2026-06-19': 87,  '2026-06-20': 101,
-    '2026-06-21': 61,  '2026-06-22': 112, '2026-06-23': 107,
+    '2026-06-21': 61,  '2026-06-22': 112, '2026-06-23': 111,
 }
 
-# Source: Weekly PNL spreadsheet — packaging = Total Cost − (HC × 1,214)
+# Source: Weekly PNL spreadsheet — packaging = Total Cost − (HC × 1,167)
 packaging = {
     '2026-06-01': 0.00,
     '2026-06-02': 65624.29,
@@ -490,7 +490,7 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
     </tfoot>
   </table>
   <p style="margin-top:10px;font-size:11px;color:#94a3b8">
-    * {today_str} is today (partial). Packaging &amp; Revenue for {today_str} pending. Source: Weekly PNL spreadsheet. | Labor = HC × ₱1,214/day | Budget = ₱145,900/day
+    * {today_str} is today (partial). Packaging &amp; Revenue for {today_str} pending. Source: Weekly PNL spreadsheet. | Labor = HC × ₱1,167/day | Budget = ₱145,900/day
   </p>
 
   <!-- ── Trend & Forecast Section ─────────────────────────────────────── -->
