@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LOCAD Cabuyao — June 2026 P&L</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f5f9;color:#1e293b;font-size:14px}
+.header{background:#0f172a;color:#fff;padding:20px 32px;display:flex;justify-content:space-between;align-items:flex-end}
+.header h1{font-size:20px;font-weight:700;letter-spacing:-.3px}
+.header .sub{font-size:13px;color:#94a3b8;margin-top:4px}
+.header .ts{font-size:11px;color:#475569}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:14px;padding:24px 32px 8px}
+.kpi{background:#fff;border-radius:10px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.kpi .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:5px}
+.kpi .val{font-size:26px;font-weight:700;line-height:1.1}
+.kpi .hint{font-size:11px;color:#94a3b8;margin-top:5px}
+.section{padding:16px 32px 32px}
+.section h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:14px}
+.charts{display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:24px}
+.card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+th{background:#f8fafc;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;font-weight:600;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+tfoot td{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}
+@media(max-width:900px){.charts{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.section,.header{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>LOCAD Cabuyao (LISP) FC &mdash; June 2026 P&amp;L</h1>
+    <div class="sub">17 days MTD</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="ts" id="tsLabel">Updated Jun 18, 2026 01:22</div>
+    <button id="refreshBtn" onclick="doRefresh()"
+      style="background:#1e40af;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
+      ↻ Refresh
+    </button>
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi">
+    <div class="lbl">MTD Total Cost</div>
+    <div class="val">₱3,899,427</div>
+    <div class="hint">Budget: ₱2,480,300</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">Budget Variance</div>
+    <div class="val" style="color:#dc2626">+₱1,419,127</div>
+    <div class="hint">157.2% of MTD budget used</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">MTD Labor</div>
+    <div class="val">₱2,877,180</div>
+    <div class="hint">Avg 139 HC/day · ₱1,214/head</div>
+  </div>
+  <div class="kpi" style="cursor:pointer" onclick="togglePkg()" title="Click to view packaging detail">
+    <div class="lbl">MTD Packaging (Jun 1–16) <span id="pkgArrow" style="float:right;font-size:13px;color:#6366f1">▼ Details</span></div>
+    <div class="val">₱1,022,247</div>
+    <div class="hint">Jun 17 pending entry</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">MTD Revenue (Jun 1–16)</div>
+    <div class="val">₱3,425,741</div>
+    <div class="hint">Fulfillment billing · Jun 17 pending</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">MTD Volume</div>
+    <div class="val">170,341</div>
+    <div class="hint">Avg CPO: ₱23</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Cost vs Budget</h2>
+  <div class="charts">
+    <div class="card">
+      <h3>Daily Cost Breakdown vs Budget (₱)</h3>
+      <canvas id="costChart" height="160"></canvas>
+    </div>
+    <div class="card">
+      <h3>Revenue vs Cost — Jun 1–16</h3>
+      <canvas id="revChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <h2>Daily Detail</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th style="text-align:right">HC</th>
+        <th style="text-align:right">Orders</th>
+        <th style="text-align:right">Labor</th>
+        <th style="text-align:right">Packaging</th>
+        <th style="text-align:right">Total Cost</th>
+        <th style="text-align:right">vs Budget</th>
+        <th style="text-align:right">Revenue</th>
+        <th style="text-align:right">Gross Margin</th>
+        <th style="text-align:right">CPO</th>
+      </tr>
+    </thead>
+    <tbody>
+<tr style="">
+      <td>Mon, 1 Jun</td>
+      <td style="text-align:right">137</td>
+      <td style="text-align:right">10,523</td>
+      <td style="text-align:right">₱166,318</td>
+      <td style="text-align:right">₱0</td>
+      <td style="text-align:right;font-weight:600">₱166,318</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱20,418</td>
+      <td style="text-align:right">₱195,385</td>
+      <td style="text-align:right"><span style="color:#16a34a">₱29,067</span></td>
+      <td style="text-align:right;color:#64748b">₱15.8</td>
+    </tr><tr style="">
+      <td>Tue, 2 Jun</td>
+      <td style="text-align:right">143</td>
+      <td style="text-align:right">10,171</td>
+      <td style="text-align:right">₱173,602</td>
+      <td style="text-align:right">₱65,624</td>
+      <td style="text-align:right;font-weight:600">₱239,226</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱93,326</td>
+      <td style="text-align:right">₱232,136</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-7,090</span></td>
+      <td style="text-align:right;color:#64748b">₱23.5</td>
+    </tr><tr style="">
+      <td>Wed, 3 Jun</td>
+      <td style="text-align:right">151</td>
+      <td style="text-align:right">10,173</td>
+      <td style="text-align:right">₱183,314</td>
+      <td style="text-align:right">₱78,159</td>
+      <td style="text-align:right;font-weight:600">₱261,473</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱115,573</td>
+      <td style="text-align:right">₱193,767</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-67,706</span></td>
+      <td style="text-align:right;color:#64748b">₱25.7</td>
+    </tr><tr style="">
+      <td>Thu, 4 Jun</td>
+      <td style="text-align:right">185</td>
+      <td style="text-align:right">9,464</td>
+      <td style="text-align:right">₱224,590</td>
+      <td style="text-align:right">₱102,288</td>
+      <td style="text-align:right;font-weight:600">₱326,878</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱180,978</td>
+      <td style="text-align:right">₱209,102</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-117,776</span></td>
+      <td style="text-align:right;color:#64748b">₱34.5</td>
+    </tr><tr style="">
+      <td>Fri, 5 Jun</td>
+      <td style="text-align:right">192</td>
+      <td style="text-align:right">14,936</td>
+      <td style="text-align:right">₱233,088</td>
+      <td style="text-align:right">₱107,796</td>
+      <td style="text-align:right;font-weight:600">₱340,884</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱194,984</td>
+      <td style="text-align:right">₱247,257</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-93,627</span></td>
+      <td style="text-align:right;color:#64748b">₱22.8</td>
+    </tr><tr style="">
+      <td>Sat, 6 Jun</td>
+      <td style="text-align:right">187</td>
+      <td style="text-align:right">24,975</td>
+      <td style="text-align:right">₱227,018</td>
+      <td style="text-align:right">₱107,181</td>
+      <td style="text-align:right;font-weight:600">₱334,199</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱188,299</td>
+      <td style="text-align:right">₱210,137</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-124,062</span></td>
+      <td style="text-align:right;color:#64748b">₱13.4</td>
+    </tr><tr style="">
+      <td>Sun, 7 Jun</td>
+      <td style="text-align:right">161</td>
+      <td style="text-align:right">10,008</td>
+      <td style="text-align:right">₱195,454</td>
+      <td style="text-align:right">₱97,287</td>
+      <td style="text-align:right;font-weight:600">₱292,741</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱146,841</td>
+      <td style="text-align:right">₱386,173</td>
+      <td style="text-align:right"><span style="color:#16a34a">₱93,432</span></td>
+      <td style="text-align:right;color:#64748b">₱29.2</td>
+    </tr><tr style="">
+      <td>Mon, 8 Jun</td>
+      <td style="text-align:right">147</td>
+      <td style="text-align:right">8,651</td>
+      <td style="text-align:right">₱178,458</td>
+      <td style="text-align:right">₱59,946</td>
+      <td style="text-align:right;font-weight:600">₱238,404</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱92,504</td>
+      <td style="text-align:right">₱333,558</td>
+      <td style="text-align:right"><span style="color:#16a34a">₱95,154</span></td>
+      <td style="text-align:right;color:#64748b">₱27.6</td>
+    </tr><tr style="">
+      <td>Tue, 9 Jun</td>
+      <td style="text-align:right">127</td>
+      <td style="text-align:right">7,959</td>
+      <td style="text-align:right">₱154,178</td>
+      <td style="text-align:right">₱64,787</td>
+      <td style="text-align:right;font-weight:600">₱218,965</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱73,065</td>
+      <td style="text-align:right">₱216,918</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-2,047</span></td>
+      <td style="text-align:right;color:#64748b">₱27.5</td>
+    </tr><tr style="">
+      <td>Wed, 10 Jun</td>
+      <td style="text-align:right">141</td>
+      <td style="text-align:right">7,587</td>
+      <td style="text-align:right">₱171,174</td>
+      <td style="text-align:right">₱52,510</td>
+      <td style="text-align:right;font-weight:600">₱223,684</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱77,784</td>
+      <td style="text-align:right">₱157,724</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-65,961</span></td>
+      <td style="text-align:right;color:#64748b">₱29.5</td>
+    </tr><tr style="">
+      <td>Thu, 11 Jun</td>
+      <td style="text-align:right">130</td>
+      <td style="text-align:right">7,864</td>
+      <td style="text-align:right">₱157,820</td>
+      <td style="text-align:right">₱51,739</td>
+      <td style="text-align:right;font-weight:600">₱209,559</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱63,659</td>
+      <td style="text-align:right">₱151,566</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-57,993</span></td>
+      <td style="text-align:right;color:#64748b">₱26.6</td>
+    </tr><tr style="">
+      <td>Fri, 12 Jun</td>
+      <td style="text-align:right">78</td>
+      <td style="text-align:right">9,546</td>
+      <td style="text-align:right">₱94,692</td>
+      <td style="text-align:right">₱36,120</td>
+      <td style="text-align:right;font-weight:600">₱130,812</td>
+      <td style="text-align:right;color:#16a34a;font-size:12px">₱-15,088</td>
+      <td style="text-align:right">₱122,797</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-8,015</span></td>
+      <td style="text-align:right;color:#64748b">₱13.7</td>
+    </tr><tr style="">
+      <td>Sat, 13 Jun</td>
+      <td style="text-align:right">139</td>
+      <td style="text-align:right">8,623</td>
+      <td style="text-align:right">₱168,746</td>
+      <td style="text-align:right">₱45,171</td>
+      <td style="text-align:right;font-weight:600">₱213,917</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱68,017</td>
+      <td style="text-align:right">₱213,662</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-255</span></td>
+      <td style="text-align:right;color:#64748b">₱24.8</td>
+    </tr><tr style="">
+      <td>Sun, 14 Jun</td>
+      <td style="text-align:right">109</td>
+      <td style="text-align:right">9,054</td>
+      <td style="text-align:right">₱132,326</td>
+      <td style="text-align:right">₱30,871</td>
+      <td style="text-align:right;font-weight:600">₱163,197</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱17,297</td>
+      <td style="text-align:right">₱143,478</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-19,719</span></td>
+      <td style="text-align:right;color:#64748b">₱18.0</td>
+    </tr><tr style="">
+      <td>Mon, 15 Jun</td>
+      <td style="text-align:right">120</td>
+      <td style="text-align:right">10,755</td>
+      <td style="text-align:right">₱145,680</td>
+      <td style="text-align:right">₱87,561</td>
+      <td style="text-align:right;font-weight:600">₱233,241</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱87,341</td>
+      <td style="text-align:right">₱219,627</td>
+      <td style="text-align:right"><span style="color:#dc2626">₱-13,614</span></td>
+      <td style="text-align:right;color:#64748b">₱21.7</td>
+    </tr><tr style="">
+      <td>Tue, 16 Jun</td>
+      <td style="text-align:right">107</td>
+      <td style="text-align:right">9,778</td>
+      <td style="text-align:right">₱129,898</td>
+      <td style="text-align:right">₱35,206</td>
+      <td style="text-align:right;font-weight:600">₱165,104</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱19,204</td>
+      <td style="text-align:right">₱192,454</td>
+      <td style="text-align:right"><span style="color:#16a34a">₱27,349</span></td>
+      <td style="text-align:right;color:#64748b">₱16.9</td>
+    </tr><tr style="background:#fefce8;">
+      <td>Wed, 17 Jun <span style="font-size:10px;background:#f59e0b;color:#fff;padding:1px 6px;border-radius:3px">TODAY</span></td>
+      <td style="text-align:right">116</td>
+      <td style="text-align:right">274</td>
+      <td style="text-align:right">₱140,824</td>
+      <td style="text-align:right"><span style="color:#94a3b8;font-size:12px">pending</span></td>
+      <td style="text-align:right;font-weight:600">₱140,824</td>
+      <td style="text-align:right;color:#16a34a;font-size:12px">₱-5,076</td>
+      <td style="text-align:right"><span style="color:#94a3b8;font-size:12px">pending</span></td>
+      <td style="text-align:right"><span style="color:#94a3b8;font-size:12px">pending</span></td>
+      <td style="text-align:right;color:#64748b">₱514.0</td>
+    </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>MTD TOTAL (17d)</td>
+        <td style="text-align:right">139 avg</td>
+        <td style="text-align:right">170,341</td>
+        <td style="text-align:right">₱2,877,180</td>
+        <td style="text-align:right">₱1,022,247</td>
+        <td style="text-align:right">₱3,899,427</td>
+        <td style="text-align:right;color:#fca5a5">+₱1,419,127</td>
+        <td style="text-align:right">₱3,425,741</td>
+        <td style="text-align:right;color:#94a3b8">partial</td>
+        <td style="text-align:right">₱23</td>
+      </tr>
+    </tfoot>
+  </table>
+  <p style="margin-top:10px;font-size:11px;color:#94a3b8">
+    * Jun 17 is today (partial). Packaging &amp; Revenue for Jun 17 pending. Source: Weekly PNL spreadsheet. | Labor = HC × ₱1,214/day | Budget = ₱145,900/day
+  </p>
+
+  <!-- ── Trend & Forecast Section ─────────────────────────────────────── -->
+  <div style="margin-top:32px">
+    <h2 style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0f172a;margin-bottom:16px">
+      📊 Trend Analysis &amp; June Forecast
+    </h2>
+
+    <!-- Decision KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px">
+      <div class="kpi" style="border-left:4px solid #dc2626">
+        <div class="lbl">Projected Month-End Cost</div>
+        <div class="val" style="font-size:22px">₱6,107,882</div>
+        <div class="hint">🔴 Over budget by ₱1,730,882</div>
+      </div>
+      <div class="kpi" style="border-left:4px solid #6366f1">
+        <div class="lbl">Projected Month-End Revenue</div>
+        <div class="val" style="font-size:22px">₱5,687,822</div>
+        <div class="hint">🔴 Gross margin ₱-420,060</div>
+      </div>
+      <div class="kpi" style="border-left:4px solid #f59e0b">
+        <div class="lbl">Monthly Budget</div>
+        <div class="val" style="font-size:22px">₱4,377,000</div>
+        <div class="hint">🔴 Pace: 167.0% of pro-rated budget</div>
+      </div>
+      <div class="kpi" style="border-left:4px solid #10b981">
+        <div class="lbl">Recommended HC (Jun 18–30)</div>
+        <div class="val" style="font-size:22px">0</div>
+        <div class="hint">To stay within budget · est. ₱48,107/day</div>
+      </div>
+      <div class="kpi" style="border-left:4px solid #8b5cf6">
+        <div class="lbl">Remaining Budget (Jun 17–30)</div>
+        <div class="val" style="font-size:22px">₱477,573</div>
+        <div class="hint">₱34,112/day available · 14 days left</div>
+      </div>
+      <div class="kpi" style="border-left:4px solid #64748b">
+        <div class="lbl">Revenue Coverage</div>
+        <div class="val" style="font-size:22px">87.9%</div>
+        <div class="hint">🟡 Cost covered by fulfillment rev</div>
+      </div>
+    </div>
+
+    <!-- Trend signals -->
+    <div class="card" style="margin-bottom:20px;padding:16px 24px">
+      <h3 style="margin-bottom:12px">Trend Signals (Jun 1–16 linear regression)</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;font-size:13px">
+        <div><strong>Daily Cost trend:</strong> 📉 Falling &nbsp; <span style="color:#64748b">(slope ₱-6,638/day)</span></div>
+        <div><strong>Revenue trend:</strong> 📉 Falling &nbsp; <span style="color:#64748b">(slope ₱-3,948/day)</span></div>
+        <div><strong>7-day avg daily cost:</strong> ₱191,359 &nbsp; <span style="color:#64748b">vs budget ₱145,900</span></div>
+        <div><strong>7-day avg HC:</strong> 118 heads &nbsp; <span style="color:#64748b">avg pkg ₱48,107/day</span></div>
+      </div>
+    </div>
+
+    <!-- Forecast chart -->
+    <div class="card" style="margin-bottom:20px">
+      <h3>Full June — Actual vs Forecast Cost &amp; Revenue (₱)</h3>
+      <canvas id="forecastChart" height="130"></canvas>
+      <p style="font-size:11px;color:#94a3b8;margin-top:8px">
+        Forecast = 60% linear regression + 40% 7-day average. Shaded band = ±1 std dev of last 7 days.
+        Dashed = forecast period (Jun 17–30).
+      </p>
+    </div>
+
+    <!-- Extended table: actual + forecast rows -->
+    <h3 style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:10px">
+      Forecast Detail — Jun 17–30
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th style="text-align:right">HC</th>
+          <th style="text-align:right">Orders</th>
+          <th style="text-align:right">Labor</th>
+          <th style="text-align:right">Packaging</th>
+          <th style="text-align:right">Total Cost</th>
+          <th style="text-align:right">vs Budget</th>
+          <th style="text-align:right">Revenue</th>
+          <th style="text-align:right">Gross Margin</th>
+          <th style="text-align:right">CPO</th>
+        </tr>
+      </thead>
+      <tbody>
+<tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Wed, 17 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱183,636</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱37,736</td>
+      <td style="text-align:right">₱176,975</td>
+      <td style="text-align:right;color:#dc2626">₱-6,661</td>
+      <td style="text-align:right;color:#94a3b8">₱20</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Thu, 18 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱179,653</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱33,753</td>
+      <td style="text-align:right">₱174,607</td>
+      <td style="text-align:right;color:#dc2626">₱-5,046</td>
+      <td style="text-align:right;color:#94a3b8">₱20</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Fri, 19 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱175,670</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱29,770</td>
+      <td style="text-align:right">₱172,237</td>
+      <td style="text-align:right;color:#dc2626">₱-3,433</td>
+      <td style="text-align:right;color:#94a3b8">₱19</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Sat, 20 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱171,687</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱25,787</td>
+      <td style="text-align:right">₱169,868</td>
+      <td style="text-align:right;color:#dc2626">₱-1,819</td>
+      <td style="text-align:right;color:#94a3b8">₱19</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Sun, 21 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱167,704</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱21,804</td>
+      <td style="text-align:right">₱167,500</td>
+      <td style="text-align:right;color:#dc2626">₱-204</td>
+      <td style="text-align:right;color:#94a3b8">₱19</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Mon, 22 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱163,721</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱17,821</td>
+      <td style="text-align:right">₱165,131</td>
+      <td style="text-align:right;color:#16a34a">₱1,410</td>
+      <td style="text-align:right;color:#94a3b8">₱18</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Tue, 23 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱159,738</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱13,838</td>
+      <td style="text-align:right">₱162,761</td>
+      <td style="text-align:right;color:#16a34a">₱3,023</td>
+      <td style="text-align:right;color:#94a3b8">₱18</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Wed, 24 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱155,756</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱9,856</td>
+      <td style="text-align:right">₱160,393</td>
+      <td style="text-align:right;color:#16a34a">₱4,637</td>
+      <td style="text-align:right;color:#94a3b8">₱17</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Thu, 25 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱151,772</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱5,872</td>
+      <td style="text-align:right">₱158,024</td>
+      <td style="text-align:right;color:#16a34a">₱6,252</td>
+      <td style="text-align:right;color:#94a3b8">₱17</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Fri, 26 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱147,789</td>
+      <td style="text-align:right;color:#dc2626;font-size:12px">+₱1,889</td>
+      <td style="text-align:right">₱155,655</td>
+      <td style="text-align:right;color:#16a34a">₱7,866</td>
+      <td style="text-align:right;color:#94a3b8">₱16</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Sat, 27 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱143,807</td>
+      <td style="text-align:right;color:#16a34a;font-size:12px">₱-2,093</td>
+      <td style="text-align:right">₱153,286</td>
+      <td style="text-align:right;color:#16a34a">₱9,479</td>
+      <td style="text-align:right;color:#94a3b8">₱16</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Sun, 28 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱139,824</td>
+      <td style="text-align:right;color:#16a34a;font-size:12px">₱-6,076</td>
+      <td style="text-align:right">₱150,917</td>
+      <td style="text-align:right;color:#16a34a">₱11,093</td>
+      <td style="text-align:right;color:#94a3b8">₱15</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Mon, 29 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱135,840</td>
+      <td style="text-align:right;color:#16a34a;font-size:12px">₱-10,060</td>
+      <td style="text-align:right">₱148,548</td>
+      <td style="text-align:right;color:#16a34a">₱12,708</td>
+      <td style="text-align:right;color:#94a3b8">₱15</td>
+    </tr><tr style="background:#f8f7ff;color:#475569;font-style:italic">
+      <td>Tue, 30 Jun <span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:3px">FORECAST</span></td>
+      <td style="text-align:right">118</td>
+      <td style="text-align:right">9,030</td>
+      <td style="text-align:right">₱143,252</td>
+      <td style="text-align:right">₱48,107</td>
+      <td style="text-align:right;font-weight:600">₱131,858</td>
+      <td style="text-align:right;color:#16a34a;font-size:12px">₱-14,042</td>
+      <td style="text-align:right">₱146,179</td>
+      <td style="text-align:right;color:#16a34a">₱14,321</td>
+      <td style="text-align:right;color:#94a3b8">₱15</td>
+    </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>FORECAST TOTAL (14d)</td>
+          <td style="text-align:right">118 avg</td>
+          <td style="text-align:right">126,420</td>
+          <td style="text-align:right">₱2,005,528</td>
+          <td style="text-align:right">₱673,498</td>
+          <td style="text-align:right">₱2,208,455</td>
+          <td style="text-align:right;color:#fca5a5">+₱165,855</td>
+          <td style="text-align:right">₱2,262,081</td>
+          <td style="text-align:right;color:#16a34a">₱53,626</td>
+          <td style="text-align:right;color:#94a3b8">—</td>
+        </tr>
+        <tr style="background:#1e293b;color:#fff;font-weight:700">
+          <td>JUNE TOTAL (30d)</td>
+          <td style="text-align:right">—</td>
+          <td style="text-align:right">296,761</td>
+          <td style="text-align:right">—</td>
+          <td style="text-align:right">—</td>
+          <td style="text-align:right">₱6,107,882</td>
+          <td style="text-align:right;color:#fca5a5">+₱1,730,882</td>
+          <td style="text-align:right">₱5,687,822</td>
+          <td style="text-align:right;color:#fca5a5">₱-420,060</td>
+          <td style="text-align:right;color:#94a3b8">—</td>
+        </tr>
+      </tfoot>
+    </table>
+    <p style="margin-top:8px;font-size:11px;color:#94a3b8">
+      * Forecast uses blended model (60% regression + 40% 7-day avg) · HC based on last 7-day average (118) ·
+      Recommended HC to stay within budget: <strong>0</strong> heads/day
+    </p>
+  </div>
+
+  <!-- Packaging Detail Panel -->
+  <div id="pkgPanel" style="display:none;margin-top:28px">
+    <h2 style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6366f1;margin-bottom:14px">
+      📦 Packaging Cost — Daily Breakdown by Material
+    </h2>
+
+    <!-- Row 1: stacked material chart + MTD totals by material -->
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:20px">
+      <div class="card">
+        <h3>Daily Packaging by Material (₱ stacked)</h3>
+        <canvas id="pkgMatChart" height="180"></canvas>
+      </div>
+      <div class="card" style="overflow:auto">
+        <h3>MTD Total by Material</h3>
+        <table style="box-shadow:none;border-radius:0;margin-top:4px">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th style="text-align:right">MTD Cost</th>
+              <th style="text-align:right">Share</th>
+              <th style="min-width:80px">Bar</th>
+            </tr>
+          </thead>
+          <tbody>
+<tr>
+          <td>BW 20"</td>
+          <td style="text-align:right;font-weight:600">₱311,560</td>
+          <td style="text-align:right;color:#64748b">30.5%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:100%"></div></td>
+        </tr><tr>
+          <td>BW 40"</td>
+          <td style="text-align:right;font-weight:600">₱191,706</td>
+          <td style="text-align:right;color:#64748b">18.8%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:61%"></div></td>
+        </tr><tr>
+          <td>Packing Tape</td>
+          <td style="text-align:right;font-weight:600">₱139,192</td>
+          <td style="text-align:right;color:#64748b">13.6%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:44%"></div></td>
+        </tr><tr>
+          <td>Box L</td>
+          <td style="text-align:right;font-weight:600">₱73,584</td>
+          <td style="text-align:right;color:#64748b">7.2%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:23%"></div></td>
+        </tr><tr>
+          <td>BW 13"</td>
+          <td style="text-align:right;font-weight:600">₱55,575</td>
+          <td style="text-align:right;color:#64748b">5.4%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:17%"></div></td>
+        </tr><tr>
+          <td>Box S</td>
+          <td style="text-align:right;font-weight:600">₱51,808</td>
+          <td style="text-align:right;color:#64748b">5.1%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:16%"></div></td>
+        </tr><tr>
+          <td>Stretch Film (Blk)</td>
+          <td style="text-align:right;font-weight:600">₱48,555</td>
+          <td style="text-align:right;color:#64748b">4.7%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:15%"></div></td>
+        </tr><tr>
+          <td>Box M</td>
+          <td style="text-align:right;font-weight:600">₱38,415</td>
+          <td style="text-align:right;color:#64748b">3.8%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:12%"></div></td>
+        </tr><tr>
+          <td>Fragile Tape</td>
+          <td style="text-align:right;font-weight:600">₱28,348</td>
+          <td style="text-align:right;color:#64748b">2.8%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:9%"></div></td>
+        </tr><tr>
+          <td>Box XS</td>
+          <td style="text-align:right;font-weight:600">₱23,331</td>
+          <td style="text-align:right;color:#64748b">2.3%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:7%"></div></td>
+        </tr><tr>
+          <td>Stretch Film (Clr)</td>
+          <td style="text-align:right;font-weight:600">₱19,800</td>
+          <td style="text-align:right;color:#64748b">1.9%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:6%"></div></td>
+        </tr><tr>
+          <td>Whse. Supplies</td>
+          <td style="text-align:right;font-weight:600">₱15,000</td>
+          <td style="text-align:right;color:#64748b">1.5%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:4%"></div></td>
+        </tr><tr>
+          <td>Box XL</td>
+          <td style="text-align:right;font-weight:600">₱13,225</td>
+          <td style="text-align:right;color:#64748b">1.3%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:4%"></div></td>
+        </tr><tr>
+          <td>Fragile Sticker</td>
+          <td style="text-align:right;font-weight:600">₱9,396</td>
+          <td style="text-align:right;color:#64748b">0.9%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:3%"></div></td>
+        </tr><tr>
+          <td>Box XXL</td>
+          <td style="text-align:right;font-weight:600">₱2,753</td>
+          <td style="text-align:right;color:#64748b">0.3%</td>
+          <td><div style="background:#ddd6fe;height:8px;border-radius:3px;width:0%"></div></td>
+        </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>TOTAL</td>
+              <td style="text-align:right">₱1,022,247</td>
+              <td style="text-align:right">100%</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Row 2: daily totals table -->
+    <h3 style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:10px">Daily Summary</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th style="text-align:right">Packaging Cost</th>
+          <th style="text-align:right">% of Total Cost</th>
+          <th style="text-align:right">% of Revenue</th>
+          <th style="text-align:right">Pkg/Order</th>
+          <th>Relative Size</th>
+        </tr>
+      </thead>
+      <tbody>
+<tr>
+      <td>Mon, 1 Jun</td>
+      <td style="text-align:right">₱0</td>
+      <td style="text-align:right;color:#64748b">0.0%</td>
+      <td style="text-align:right;color:#64748b">0.0%</td>
+      <td style="text-align:right;color:#64748b">₱0.0</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:0px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Tue, 2 Jun</td>
+      <td style="text-align:right">₱65,624</td>
+      <td style="text-align:right;color:#64748b">27.4%</td>
+      <td style="text-align:right;color:#64748b">28.3%</td>
+      <td style="text-align:right;color:#64748b">₱6.45</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:39px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Wed, 3 Jun</td>
+      <td style="text-align:right">₱78,159</td>
+      <td style="text-align:right;color:#64748b">29.9%</td>
+      <td style="text-align:right;color:#64748b">40.3%</td>
+      <td style="text-align:right;color:#64748b">₱7.68</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:46px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Thu, 4 Jun</td>
+      <td style="text-align:right">₱102,288</td>
+      <td style="text-align:right;color:#64748b">31.3%</td>
+      <td style="text-align:right;color:#64748b">48.9%</td>
+      <td style="text-align:right;color:#64748b">₱10.81</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:61px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Fri, 5 Jun</td>
+      <td style="text-align:right">₱107,796</td>
+      <td style="text-align:right;color:#64748b">31.6%</td>
+      <td style="text-align:right;color:#64748b">43.6%</td>
+      <td style="text-align:right;color:#64748b">₱7.22</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:64px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Sat, 6 Jun</td>
+      <td style="text-align:right">₱107,181</td>
+      <td style="text-align:right;color:#64748b">32.1%</td>
+      <td style="text-align:right;color:#64748b">51.0%</td>
+      <td style="text-align:right;color:#64748b">₱4.29</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:64px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Sun, 7 Jun</td>
+      <td style="text-align:right">₱97,287</td>
+      <td style="text-align:right;color:#64748b">33.2%</td>
+      <td style="text-align:right;color:#64748b">25.2%</td>
+      <td style="text-align:right;color:#64748b">₱9.72</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:58px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Mon, 8 Jun</td>
+      <td style="text-align:right">₱59,946</td>
+      <td style="text-align:right;color:#64748b">25.1%</td>
+      <td style="text-align:right;color:#64748b">18.0%</td>
+      <td style="text-align:right;color:#64748b">₱6.93</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:35px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Tue, 9 Jun</td>
+      <td style="text-align:right">₱64,787</td>
+      <td style="text-align:right;color:#64748b">29.6%</td>
+      <td style="text-align:right;color:#64748b">29.9%</td>
+      <td style="text-align:right;color:#64748b">₱8.14</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:38px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Wed, 10 Jun</td>
+      <td style="text-align:right">₱52,510</td>
+      <td style="text-align:right;color:#64748b">23.5%</td>
+      <td style="text-align:right;color:#64748b">33.3%</td>
+      <td style="text-align:right;color:#64748b">₱6.92</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:31px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Thu, 11 Jun</td>
+      <td style="text-align:right">₱51,739</td>
+      <td style="text-align:right;color:#64748b">24.7%</td>
+      <td style="text-align:right;color:#64748b">34.1%</td>
+      <td style="text-align:right;color:#64748b">₱6.58</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:31px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Fri, 12 Jun</td>
+      <td style="text-align:right">₱36,120</td>
+      <td style="text-align:right;color:#64748b">27.6%</td>
+      <td style="text-align:right;color:#64748b">29.4%</td>
+      <td style="text-align:right;color:#64748b">₱3.78</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:21px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Sat, 13 Jun</td>
+      <td style="text-align:right">₱45,171</td>
+      <td style="text-align:right;color:#64748b">21.1%</td>
+      <td style="text-align:right;color:#64748b">21.1%</td>
+      <td style="text-align:right;color:#64748b">₱5.24</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:27px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Sun, 14 Jun</td>
+      <td style="text-align:right">₱30,871</td>
+      <td style="text-align:right;color:#64748b">18.9%</td>
+      <td style="text-align:right;color:#64748b">21.5%</td>
+      <td style="text-align:right;color:#64748b">₱3.41</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:18px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Mon, 15 Jun</td>
+      <td style="text-align:right">₱87,561</td>
+      <td style="text-align:right;color:#64748b">37.5%</td>
+      <td style="text-align:right;color:#64748b">39.9%</td>
+      <td style="text-align:right;color:#64748b">₱8.14</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:52px;margin-top:2px"></div></td>
+    </tr><tr>
+      <td>Tue, 16 Jun</td>
+      <td style="text-align:right">₱35,206</td>
+      <td style="text-align:right;color:#64748b">21.3%</td>
+      <td style="text-align:right;color:#64748b">18.3%</td>
+      <td style="text-align:right;color:#64748b">₱3.6</td>
+      <td><div style="background:#ddd6fe;height:10px;border-radius:4px;width:21px;margin-top:2px"></div></td>
+    </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>TOTAL (Jun 1–16)</td>
+          <td style="text-align:right">₱1,022,247</td>
+          <td style="text-align:right">26.2%</td>
+          <td style="text-align:right">29.8%</td>
+          <td style="text-align:right">—</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<script>
+Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+const lbl=["Mon, 1 Jun", "Tue, 2 Jun", "Wed, 3 Jun", "Thu, 4 Jun", "Fri, 5 Jun", "Sat, 6 Jun", "Sun, 7 Jun", "Mon, 8 Jun", "Tue, 9 Jun", "Wed, 10 Jun", "Thu, 11 Jun", "Fri, 12 Jun", "Sat, 13 Jun", "Sun, 14 Jun", "Mon, 15 Jun", "Tue, 16 Jun", "Wed, 17 Jun"], lab=[166318, 173602, 183314, 224590, 233088, 227018, 195454, 178458, 154178, 171174, 157820, 94692, 168746, 132326, 145680, 129898, 140824], pkg_=[0.0, 65624.29, 78159.44, 102288.06, 107795.75, 107181.08, 97286.7, 59946.18, 64787.13, 52510.16, 51738.81, 36119.99, 45171.23, 30871.02, 87560.56, 35206.37, 0], bud_=[145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900], rev_=[195385.39, 232135.92, 193767.46, 209101.93, 247256.74, 210136.79, 386173.11, 333558.19, 216918.29, 157723.54, 151565.74, 122797.01, 213662.1, 143477.96, 219626.68, 192453.68, null], tc_=[166318, 239226.28999999998, 261473.44, 326878.06, 340883.75, 334199.08, 292740.7, 238404.18, 218965.13, 223684.16, 209558.81, 130811.98999999999, 213917.23, 163197.02, 233240.56, 165104.37, 140824];
+const pkg_lbl=["Mon, 1 Jun", "Tue, 2 Jun", "Wed, 3 Jun", "Thu, 4 Jun", "Fri, 5 Jun", "Sat, 6 Jun", "Sun, 7 Jun", "Mon, 8 Jun", "Tue, 9 Jun", "Wed, 10 Jun", "Thu, 11 Jun", "Fri, 12 Jun", "Sat, 13 Jun", "Sun, 14 Jun", "Mon, 15 Jun", "Tue, 16 Jun"], pkg_vals=[0.0, 65624.29, 78159.44, 102288.06, 107795.75, 107181.08, 97286.7, 59946.18, 64787.13, 52510.16, 51738.81, 36119.99, 45171.23, 30871.02, 87560.56, 35206.37], pkg_pct=[0.0, 27.4, 29.9, 31.3, 31.6, 32.1, 33.2, 25.1, 29.6, 23.5, 24.7, 27.6, 21.1, 18.9, 37.5, 21.3];
+const mat_lbl=["1 Jun", "2 Jun", "3 Jun", "4 Jun", "5 Jun", "6 Jun", "7 Jun", "8 Jun", "9 Jun", "10 Jun", "11 Jun", "12 Jun", "13 Jun", "14 Jun", "15 Jun", "16 Jun"], mat_ds=[{"label": "BW 13\"", "data": [0, 0, 0, 0, 4290, 5070, 2925, 11115, 4290, 3900, 2925, 5850, 2340, 3510, 4485, 4875], "backgroundColor": "#818cf8", "stack": "m"}, {"label": "BW 20\"", "data": [0, 30331.44, 31214.88, 52711.92, 43288.56, 34454.16, 0, 0, 0, 0, 24147.36, 8245.44, 22380.48, 9717.84, 45644.4, 9423.36], "backgroundColor": "#6366f1", "stack": "m"}, {"label": "BW 40\"", "data": [0, 0, 12368.16, 8245.44, 17079.84, 12957.12, 47116.8, 22380.48, 28270.08, 24147.36, 0, 0, 0, 1766.88, 15312.96, 2061.36], "backgroundColor": "#4f46e5", "stack": "m"}, {"label": "Stretch Film (Blk)", "data": [0, 2905, 4150, 4980, 1660, 10790, 1660, 3320, 7055, 1245, 1245, 1245, 1245, 1660, 1245, 4150], "backgroundColor": "#f472b6", "stack": "m"}, {"label": "Stretch Film (Clr)", "data": [0, 900, 1800, 4800, 2400, 900, 1800, 1200, 2700, 900, 1200, 0, 300, 300, 300, 300], "backgroundColor": "#ec4899", "stack": "m"}, {"label": "Box XS", "data": [0, 2156, 1655.5, 1397, 1265, 2865.5, 3503.5, 1111, 1100, 962.5, 1375, 1534.5, 1303.5, 940.5, 1221, 940.5], "backgroundColor": "#34d399", "stack": "m"}, {"label": "Box S", "data": [0, 2875, 3197, 2415, 2449.5, 4450.5, 8153.5, 2679.5, 4703.5, 7245, 3530.5, 3576.5, 1713.5, 770.5, 2173.5, 1874.5], "backgroundColor": "#10b981", "stack": "m"}, {"label": "Box M", "data": [0, 1845.25, 2989, 1647, 1967.25, 3751.5, 3690.5, 3538, 2485.75, 2714.5, 3217.75, 2973.75, 1692.75, 183, 3965, 1753.75], "backgroundColor": "#059669", "stack": "m"}, {"label": "Box L", "data": [0, 2280, 4272, 3120, 3792, 10584, 10176, 3552, 2688, 2688, 5928, 7512, 6864, 4488, 3432, 2208], "backgroundColor": "#047857", "stack": "m"}, {"label": "Box XL", "data": [0, 362.7, 1255.5, 362.7, 864.9, 1618.2, 2371.5, 2036.7, 530.1, 725.4, 502.2, 976.5, 390.6, 55.8, 725.4, 446.4], "backgroundColor": "#065f46", "stack": "m"}, {"label": "Box XXL", "data": [0, 39.9, 39.9, 0, 319.2, 159.6, 39.9, 0, 1915.2, 39.9, 0, 79.8, 39.9, 0, 79.8, 0], "backgroundColor": "#064e3b", "stack": "m"}, {"label": "Packing Tape", "data": [0, 19050, 12192, 18605.5, 20828, 16192.5, 11049, 6096, 5842, 5207, 4826, 1460.5, 4127.5, 4127.5, 5334, 4254.5], "backgroundColor": "#fb923c", "stack": "m"}, {"label": "Fragile Tape", "data": [0, 1015, 1377.5, 2247.5, 5727.5, 1740, 3045, 1377.5, 1667.5, 1087.5, 870, 1450, 1450, 1595, 2102.5, 1595], "backgroundColor": "#f97316", "stack": "m"}, {"label": "Fragile Sticker", "data": [0, 864, 648, 756, 864, 648, 756, 540, 540, 648, 972, 216, 324, 756, 540, 324], "backgroundColor": "#fbbf24", "stack": "m"}, {"label": "Whse. Supplies", "data": [0, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000], "backgroundColor": "#94a3b8", "stack": "m"}];
+
+// ── Forecast chart ─────────────────────────────────────────────────────────
+const fc_lbl=["1 Jun", "2 Jun", "3 Jun", "4 Jun", "5 Jun", "6 Jun", "7 Jun", "8 Jun", "9 Jun", "10 Jun", "11 Jun", "12 Jun", "13 Jun", "14 Jun", "15 Jun", "16 Jun", "17 Jun", "18 Jun", "19 Jun", "20 Jun", "21 Jun", "22 Jun", "23 Jun", "24 Jun", "25 Jun", "26 Jun", "27 Jun", "28 Jun", "29 Jun", "30 Jun"],
+      fc_act_c=[166318.0, 239226.28999999998, 261473.44, 326878.06, 340883.75, 334199.08, 292740.7, 238404.18, 218965.13, 223684.16, 209558.81, 130811.98999999999, 213917.23, 163197.02, 233240.56, 165104.37, null, null, null, null, null, null, null, null, null, null, null, null, null, null], fc_act_r=[195385.39, 232135.92, 193767.46, 209101.93, 247256.74, 210136.79, 386173.11, 333558.19, 216918.29, 157723.54, 151565.74, 122797.01, 213662.1, 143477.96, 219626.68, 192453.68, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      fc_proj_c=[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 183636, 179653, 175670, 171687, 167704, 163721, 159738, 155756, 151772, 147789, 143807, 139824, 135840, 131858], fc_proj_r=[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 176975, 174607, 172237, 169868, 167500, 165131, 162761, 160393, 158024, 155655, 153286, 150917, 148548, 146179],
+      fc_hi=[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 219067, 215084, 211101, 207118, 203135, 199152, 195169, 191187, 187203, 183220, 179238, 175255, 171271, 167289], fc_lo=[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 148205, 144222, 140239, 136256, 132273, 128290, 124307, 120325, 116341, 112358, 108376, 104393, 100409, 96427],
+      fc_bud=[145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900, 145900];
+
+new Chart(document.getElementById('forecastChart'),{
+  type:'line',
+  data:{labels:fc_lbl,datasets:[
+    {label:'Actual Cost',data:fc_act_c,borderColor:'rgba(239,68,68,.9)',backgroundColor:'rgba(239,68,68,.12)',
+      borderWidth:2.5,pointRadius:3,fill:false,tension:.3,order:2},
+    {label:'Actual Revenue',data:fc_act_r,borderColor:'rgba(16,185,129,.9)',backgroundColor:'rgba(16,185,129,.08)',
+      borderWidth:2.5,pointRadius:3,fill:false,tension:.3,order:3},
+    {label:'Forecast Cost',data:fc_proj_c,borderColor:'rgba(239,68,68,.6)',borderDash:[6,4],
+      borderWidth:2,pointRadius:2,fill:false,tension:.3,order:4},
+    {label:'Forecast Revenue',data:fc_proj_r,borderColor:'rgba(16,185,129,.6)',borderDash:[6,4],
+      borderWidth:2,pointRadius:2,fill:false,tension:.3,order:5},
+    {label:'Upper band',data:fc_hi,borderColor:'transparent',backgroundColor:'rgba(99,102,241,.08)',
+      pointRadius:0,fill:'+1',tension:.3,order:6},
+    {label:'Lower band',data:fc_lo,borderColor:'transparent',backgroundColor:'rgba(99,102,241,.08)',
+      pointRadius:0,fill:false,tension:.3,order:7},
+    {label:'Daily Budget',data:fc_bud,borderColor:'#f59e0b',borderDash:[4,3],
+      borderWidth:1.5,pointRadius:0,fill:false,order:1},
+  ]},
+  options:{
+    responsive:true,
+    interaction:{mode:'index',intersect:false},
+    scales:{
+      y:{ticks:{callback:v=>'₱'+(v/1000).toFixed(0)+'k',font:{size:10}}},
+      x:{ticks:{font:{size:9},maxRotation:45}}
+    },
+    plugins:{
+      legend:{position:'top',labels:{font:{size:10},boxWidth:12,filter:i=>i.text!=='Upper band'&&i.text!=='Lower band'}},
+      tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': ₱'+Math.round(ctx.raw||0).toLocaleString()}}
+    }
+  }
+});
+
+let pkgMatChartInst=null;
+function togglePkg(){
+  const panel=document.getElementById('pkgPanel');
+  const arrow=document.getElementById('pkgArrow');
+  const open=panel.style.display==='none';
+  panel.style.display=open?'block':'none';
+  arrow.textContent=open?'▲ Hide':'▼ Details';
+  if(open && !pkgMatChartInst){
+    pkgMatChartInst=new Chart(document.getElementById('pkgMatChart'),{
+      type:'bar',
+      data:{labels:mat_lbl,datasets:mat_ds},
+      options:{
+        responsive:true,
+        scales:{
+          y:{stacked:true,ticks:{callback:v=>'₱'+(v/1000).toFixed(0)+'k',font:{size:10}}},
+          x:{stacked:true,ticks:{font:{size:9},maxRotation:45}}
+        },
+        plugins:{
+          legend:{position:'top',labels:{font:{size:10},boxWidth:10,padding:6}},
+          tooltip:{callbacks:{label:ctx=>' '+ctx.dataset.label+': ₱'+ctx.raw.toLocaleString('en-PH',{minimumFractionDigits:2})}}
+        }
+      }
+    });
+  }
+  if(open) panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function doRefresh(){
+  const btn=document.getElementById('refreshBtn');
+  const lbl=document.getElementById('tsLabel');
+  btn.disabled=true;
+  btn.textContent='⏳ Refreshing…';
+  lbl.textContent='Fetching latest data…';
+  fetch('http://localhost:8765/refresh',{signal:AbortSignal.timeout(90000)})
+    .then(r=>r.text())
+    .then(msg=>{
+      if(msg.startsWith('OK')){
+        btn.textContent='✓ Done — reloading…';
+        lbl.textContent=msg;
+        setTimeout(()=>location.reload(),1800);
+      } else {
+        btn.disabled=false;
+        btn.textContent='↻ Refresh';
+        lbl.textContent='Error: '+msg;
+        alert('Refresh error:\n'+msg);
+      }
+    })
+    .catch(e=>{
+      btn.disabled=false;
+      btn.textContent='↻ Refresh';
+      lbl.textContent='Server not running';
+      alert('Could not reach refresh server.\n\nMake sure "Start Refresh Server.command" is running in Terminal first.');
+    });
+}
+
+new Chart(document.getElementById('costChart'),{
+  type:'bar',
+  data:{labels:lbl,datasets:[
+    {label:'Labor',data:lab,backgroundColor:'rgba(59,130,246,.75)',stack:'c'},
+    {label:'Packaging',data:pkg_,backgroundColor:'rgba(139,92,246,.75)',stack:'c'},
+    {label:'Budget',data:bud_,type:'line',borderColor:'#f59e0b',borderWidth:2,pointRadius:0,fill:false,order:0},
+  ]},
+  options:{
+    responsive:true,
+    scales:{
+      y:{stacked:true,ticks:{callback:v=>'₱'+(v/1000).toFixed(0)+'k',font:{size:10}}},
+      x:{ticks:{font:{size:9},maxRotation:45}}
+    },
+    plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:10}}}
+  }
+});
+
+const rev16=rev_.slice(0,16), tc16=tc_.slice(0,16), lbl16=lbl.slice(0,16);
+new Chart(document.getElementById('revChart'),{
+  type:'bar',
+  data:{labels:lbl16,datasets:[
+    {label:'Revenue',data:rev16,backgroundColor:'rgba(16,185,129,.75)'},
+    {label:'Total Cost',data:tc16,backgroundColor:'rgba(239,68,68,.65)'},
+  ]},
+  options:{
+    responsive:true,
+    scales:{
+      y:{ticks:{callback:v=>'₱'+(v/1000).toFixed(0)+'k',font:{size:10}}},
+      x:{ticks:{font:{size:9},maxRotation:45}}
+    },
+    plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:10}}}
+  }
+});
+</script>
+</body>
+</html>
