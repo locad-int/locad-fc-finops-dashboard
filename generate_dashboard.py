@@ -233,9 +233,9 @@ cost_trend_dir = '📈 Rising' if cost_slope > 1000 else ('📉 Falling' if cost
 rev_trend_dir  = '📈 Rising' if rev_slope  > 1000 else ('📉 Falling' if rev_slope  < -1000 else '➡ Stable')
 budget_flag    = flag(proj_cost_total, MONTHLY_BUDGET, MONTHLY_BUDGET * 1.1)
 
-# Forecast date labels Jun 17-30
+# Forecast date labels — dynamic start (day after last complete data day)
 from datetime import date, timedelta
-fc_dates = [date(2026, 6, 17) + timedelta(days=i) for i in range(DAYS_REMAINING)]
+fc_dates = [date(2026, 6, 1) + timedelta(days=DAYS_WITH_DATA + i) for i in range(DAYS_REMAINING)]
 fc_labels = [d.strftime('%-d %b') for d in fc_dates]
 
 # Full month chart data (actual Jun 1-16 + forecast Jun 17-30)
