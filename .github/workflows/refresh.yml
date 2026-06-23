@@ -2,7 +2,7 @@ name: Auto-refresh Dashboard
 
 on:
   schedule:
-    - cron: '*/30 0-9 * * 1-6'   # every 30 min, midnight–9am UTC (8am–6pm PH time), Mon–Sat
+    - cron: '*/5 0-9 * * 1-6'    # every 5 min, midnight–9am UTC (8am–6pm PH time), Mon–Sat
   workflow_dispatch:
     inputs:
       headcount:
