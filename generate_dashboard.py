@@ -381,10 +381,6 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
   </div>
   <div style="display:flex;align-items:center;gap:16px">
     <div class="ts" id="tsLabel">Updated {gen}</div>
-    <button id="refreshBtn" onclick="doRefresh()"
-      style="background:#1e40af;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
-      ↻ Refresh
-    </button>
   </div>
 </div>
 
@@ -728,33 +724,6 @@ function togglePkg(){{
   if(open) panel.scrollIntoView({{behavior:'smooth',block:'start'}});
 }}
 
-function doRefresh(){{
-  const btn=document.getElementById('refreshBtn');
-  const lbl=document.getElementById('tsLabel');
-  btn.disabled=true;
-  btn.textContent='⏳ Refreshing…';
-  lbl.textContent='Fetching latest data…';
-  fetch('http://localhost:8765/refresh',{{signal:AbortSignal.timeout(90000)}})
-    .then(r=>r.text())
-    .then(msg=>{{
-      if(msg.startsWith('OK')){{
-        btn.textContent='✓ Done — reloading…';
-        lbl.textContent=msg;
-        setTimeout(()=>location.reload(),1800);
-      }} else {{
-        btn.disabled=false;
-        btn.textContent='↻ Refresh';
-        lbl.textContent='Error: '+msg;
-        alert('Refresh error:\\n'+msg);
-      }}
-    }})
-    .catch(e=>{{
-      btn.disabled=false;
-      btn.textContent='↻ Refresh';
-      lbl.textContent='Server not running';
-      alert('Could not reach refresh server.\\n\\nMake sure "Start Refresh Server.command" is running in Terminal first.');
-    }});
-}}
 
 new Chart(document.getElementById('costChart'),{{
   type:'bar',
