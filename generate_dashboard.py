@@ -762,6 +762,7 @@ new Chart(document.getElementById('revChart'),{{
 </body>
 </html>"""
 
-with open('/sessions/laughing-serene-turing/mnt/outputs/locad-dashboard-latest.html','w') as f:
+import pathlib as _pl
+with open(_pl.Path(__file__).parent / 'locad-dashboard-latest.html','w') as f:
     f.write(html)
 print("Done.")
