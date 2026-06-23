@@ -40,7 +40,8 @@ tfoot td{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}
     <div class="sub">23 days MTD</div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
-    <div class="ts" id="tsLabel">Updated Jun 23, 2026 15:30</div>
+    <div class="ts" id="tsLabel">Updated Jun 23, 2026 08:32</div>
+    <button id="refreshBtn" onclick="requestRefresh()" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><span id="refreshIcon">🔄</span><span id="refreshTxt">Refresh</span></button>
   </div>
 </div>
 
@@ -988,6 +989,44 @@ new Chart(document.getElementById('revChart'),{
     plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:10}}}
   }
 });
+
+// ── Request Refresh ─────────────────────────────────────────────────────────
+async function requestRefresh() {
+  const btn  = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  const txt  = document.getElementById('refreshTxt');
+  if (!btn) return;
+  btn.disabled = true;
+  icon.textContent = '⏳';
+  txt.textContent  = 'Requesting…';
+  try {
+    const res = await fetch(
+      'https://api.github.com/repos/locad-int/locad-fc-finops-dashboard/actions/workflows/refresh.yml/dispatches',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer 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',
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ref: 'main' })
+      }
+    );
+    if (res.status === 204) {
+      icon.textContent = '✅';
+      txt.textContent  = 'Queued!';
+      setTimeout(() => { icon.textContent='🔄'; txt.textContent='Refresh'; btn.disabled=false; }, 10000);
+    } else {
+      icon.textContent = '❌';
+      txt.textContent  = 'Failed (' + res.status + ')';
+      setTimeout(() => { icon.textContent='🔄'; txt.textContent='Refresh'; btn.disabled=false; }, 4000);
+    }
+  } catch(e) {
+    icon.textContent = '❌';
+    txt.textContent  = 'Error';
+    setTimeout(() => { icon.textContent='🔄'; txt.textContent='Refresh'; btn.disabled=false; }, 4000);
+  }
+}
 </script>
 </body>
 </html>
