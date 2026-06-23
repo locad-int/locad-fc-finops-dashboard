@@ -150,11 +150,12 @@ def pct(n): return f"{n:.1f}%"
 
 # ── Trend & Forecast ───────────────────────────────────────────────────────
 JUNE_DAYS     = 30
-DAYS_WITH_DATA = 16           # Jun 1-16 complete
-DAYS_REMAINING = JUNE_DAYS - DAYS_WITH_DATA  # Jun 17-30 = 14 days
 MONTHLY_BUDGET = DAILY_BUDGET * JUNE_DAYS
 
-complete = [r for r in rows if r['pkg'] is not None]  # Jun 1-16
+complete = [r for r in rows if r['pkg'] is not None]  # days with full data
+DAYS_WITH_DATA = len(complete)
+DAYS_REMAINING = JUNE_DAYS - DAYS_WITH_DATA
+last_complete_lbl = complete[-1]['label'] if complete else ''  # e.g. "Sun, 22 Jun"
 
 def linreg(y_vals):
     """Returns (slope, intercept) via ordinary least squares."""
@@ -425,14 +426,14 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
     <div class="hint">Avg {avg_hc:.0f} HC/day · ₱{DAILY_RATE:,}/head</div>
   </div>
   <div class="kpi" style="cursor:pointer" onclick="togglePkg()" title="Click to view packaging detail">
-    <div class="lbl">MTD Packaging (Jun 1–16) <span id="pkgArrow" style="float:right;font-size:13px;color:#6366f1">▼ Details</span></div>
+    <div class="lbl">MTD Packaging (Jun 1–{complete[-1]['date'][8:]}) <span id="pkgArrow" style="float:right;font-size:13px;color:#6366f1">▼ Details</span></div>
     <div class="val">{php(mtd_pkg)}</div>
-    <div class="hint">Jun 17 pending entry</div>
+    <div class="hint">{today_str} pending entry</div>
   </div>
   <div class="kpi">
-    <div class="lbl">MTD Revenue (Jun 1–16)</div>
+    <div class="lbl">MTD Revenue (Jun 1–{complete[-1]['date'][8:]})</div>
     <div class="val">{php(mtd_rev)}</div>
-    <div class="hint">Fulfillment billing · Jun 17 pending</div>
+    <div class="hint">Fulfillment billing · {today_str} pending</div>
   </div>
   <div class="kpi">
     <div class="lbl">MTD Volume</div>
@@ -449,7 +450,7 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
       <canvas id="costChart" height="160"></canvas>
     </div>
     <div class="card">
-      <h3>Revenue vs Cost — Jun 1–16</h3>
+      <h3>Revenue vs Cost — Jun 1–{complete[-1]['date'][8:]}</h3>
       <canvas id="revChart" height="160"></canvas>
     </div>
   </div>
@@ -489,7 +490,7 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
     </tfoot>
   </table>
   <p style="margin-top:10px;font-size:11px;color:#94a3b8">
-    * Jun 17 is today (partial). Packaging &amp; Revenue for Jun 17 pending. Source: Weekly PNL spreadsheet. | Labor = HC × ₱1,214/day | Budget = ₱145,900/day
+    * {today_str} is today (partial). Packaging &amp; Revenue for {today_str} pending. Source: Weekly PNL spreadsheet. | Labor = HC × ₱1,214/day | Budget = ₱145,900/day
   </p>
 
   <!-- ── Trend & Forecast Section ─────────────────────────────────────── -->
@@ -516,12 +517,12 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
         <div class="hint">{cost_flag} Pace: {cost_pace_pct}% of pro-rated budget</div>
       </div>
       <div class="kpi" style="border-left:4px solid #10b981">
-        <div class="lbl">Recommended HC (Jun 18–30)</div>
+        <div class="lbl">Recommended HC (Jun {int(today_str[8:])+1}–30)</div>
         <div class="val" style="font-size:22px">{rec_hc}</div>
         <div class="hint">To stay within budget · est. {php(rec_hc_cost)}/day</div>
       </div>
       <div class="kpi" style="border-left:4px solid #8b5cf6">
-        <div class="lbl">Remaining Budget (Jun 17–30)</div>
+        <div class="lbl">Remaining Budget (Jun {today_str[8:]}–30)</div>
         <div class="val" style="font-size:22px">{php(remaining_budget)}</div>
         <div class="hint">{php(daily_budget_remaining)}/day available · {DAYS_REMAINING} days left</div>
       </div>
@@ -534,7 +535,7 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
 
     <!-- Trend signals -->
     <div class="card" style="margin-bottom:20px;padding:16px 24px">
-      <h3 style="margin-bottom:12px">Trend Signals (Jun 1–16 linear regression)</h3>
+      <h3 style="margin-bottom:12px">Trend Signals (Jun 1–{complete[-1]['date'][8:]} linear regression)</h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;font-size:13px">
         <div><strong>Daily Cost trend:</strong> {cost_trend_dir} &nbsp; <span style="color:#64748b">(slope ₱{cost_slope:+,.0f}/day)</span></div>
         <div><strong>Revenue trend:</strong> {rev_trend_dir} &nbsp; <span style="color:#64748b">(slope ₱{rev_slope:+,.0f}/day)</span></div>
@@ -549,13 +550,13 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
       <canvas id="forecastChart" height="130"></canvas>
       <p style="font-size:11px;color:#94a3b8;margin-top:8px">
         Forecast = 60% linear regression + 40% 7-day average. Shaded band = ±1 std dev of last 7 days.
-        Dashed = forecast period (Jun 17–30).
+        Dashed = forecast period (Jun {int(today_str[8:])+1}–30).
       </p>
     </div>
 
     <!-- Extended table: actual + forecast rows -->
     <h3 style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:10px">
-      Forecast Detail — Jun 17–30
+      Forecast Detail — Jun {int(today_str[8:])+1}–30
     </h3>
     <table>
       <thead>
@@ -664,7 +665,7 @@ tfoot td{{background:#0f172a;color:#fff;font-weight:600;padding:10px 12px}}
       </tbody>
       <tfoot>
         <tr>
-          <td>TOTAL (Jun 1–16)</td>
+          <td>TOTAL (Jun 1–{complete[-1]['date'][8:]})</td>
           <td style="text-align:right">{php(mtd_pkg)}</td>
           <td style="text-align:right">{round(mtd_pkg/mtd_cost*100,1)}%</td>
           <td style="text-align:right">{round(mtd_pkg/mtd_rev*100,1) if mtd_rev>0 else "—"}%</td>
